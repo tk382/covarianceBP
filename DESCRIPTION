@@ -1,0 +1,22 @@
+Package: covarianceBP
+Type: Package
+Title: Analysis of Continuously Varying Correlation
+Version: 0.1.0
+Author: Tae Kim
+Maintainer: Tae Kim <tk382@uchicago.edu>
+Description: A hypothesis testing tool that studies whether correlation changes with a continuous covariate. Kim, T. Nicolae, D. (2019)<https://github.com/tk382/DynamicCorrelation/blob/master/working_paper.pdf>.
+License: GPL (>=2)
+Encoding: UTF-8
+LazyData: true
+LinkingTo: Rcpp, RcppArmadillo
+Depends: R (>= 3.5.0)
+Suggests: knitr, rmarkdown
+VignetteBuilder: knitr
+Imports:
+    Rcpp,
+    RcppArmadillo,
+    stats,
+    MASS,
+    irlba,
+    magrittr
+RoxygenNote: 6.1.1
