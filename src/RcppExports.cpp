@@ -8,7 +8,7 @@ using namespace Rcpp;
 
 // const_c
 double const_c(const double sigw, const double sigv);
-RcppExport SEXP _DynamicCorrelation_const_c(SEXP sigwSEXP, SEXP sigvSEXP) {
+RcppExport SEXP _covarianceBP_const_c(SEXP sigwSEXP, SEXP sigvSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -20,7 +20,7 @@ END_RCPP
 }
 // mvrnormArma
 arma::mat mvrnormArma(const int n, const arma::vec mu, const arma::mat Sigma);
-RcppExport SEXP _DynamicCorrelation_mvrnormArma(SEXP nSEXP, SEXP muSEXP, SEXP SigmaSEXP) {
+RcppExport SEXP _covarianceBP_mvrnormArma(SEXP nSEXP, SEXP muSEXP, SEXP SigmaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -31,125 +31,14 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// get_A1_c
-double get_A1_c(int k, int p, arma::mat TT, arma::mat RR, int n);
-RcppExport SEXP _DynamicCorrelation_get_A1_c(SEXP kSEXP, SEXP pSEXP, SEXP TTSEXP, SEXP RRSEXP, SEXP nSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type k(kSEXP);
-    Rcpp::traits::input_parameter< int >::type p(pSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type TT(TTSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type RR(RRSEXP);
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    rcpp_result_gen = Rcpp::wrap(get_A1_c(k, p, TT, RR, n));
-    return rcpp_result_gen;
-END_RCPP
-}
-// get_A2_c
-double get_A2_c(int k, int p, arma::mat TT, arma::mat RR, int n);
-RcppExport SEXP _DynamicCorrelation_get_A2_c(SEXP kSEXP, SEXP pSEXP, SEXP TTSEXP, SEXP RRSEXP, SEXP nSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type k(kSEXP);
-    Rcpp::traits::input_parameter< int >::type p(pSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type TT(TTSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type RR(RRSEXP);
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    rcpp_result_gen = Rcpp::wrap(get_A2_c(k, p, TT, RR, n));
-    return rcpp_result_gen;
-END_RCPP
-}
-// get_A3_c
-double get_A3_c(int k, int p, arma::mat TT, arma::mat RR, int n);
-RcppExport SEXP _DynamicCorrelation_get_A3_c(SEXP kSEXP, SEXP pSEXP, SEXP TTSEXP, SEXP RRSEXP, SEXP nSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type k(kSEXP);
-    Rcpp::traits::input_parameter< int >::type p(pSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type TT(TTSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type RR(RRSEXP);
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    rcpp_result_gen = Rcpp::wrap(get_A3_c(k, p, TT, RR, n));
-    return rcpp_result_gen;
-END_RCPP
-}
-// get_TT_RR_c
-Rcpp::List get_TT_RR_c(arma::mat A);
-RcppExport SEXP _DynamicCorrelation_get_TT_RR_c(SEXP ASEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type A(ASEXP);
-    rcpp_result_gen = Rcpp::wrap(get_TT_RR_c(A));
-    return rcpp_result_gen;
-END_RCPP
-}
-// cubic_coeff
-arma::vec cubic_coeff(arma::mat x);
-RcppExport SEXP _DynamicCorrelation_cubic_coeff(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(cubic_coeff(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// shuffle_x_c
-arma::mat shuffle_x_c(arma::vec x, int B);
-RcppExport SEXP _DynamicCorrelation_shuffle_x_c(SEXP xSEXP, SEXP BSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::vec >::type x(xSEXP);
-    Rcpp::traits::input_parameter< int >::type B(BSEXP);
-    rcpp_result_gen = Rcpp::wrap(shuffle_x_c(x, B));
-    return rcpp_result_gen;
-END_RCPP
-}
-// store_W_c
-arma::mat store_W_c(const arma::vec y, const arma::mat smallY);
-RcppExport SEXP _DynamicCorrelation_store_W_c(SEXP ySEXP, SEXP smallYSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::vec >::type y(ySEXP);
-    Rcpp::traits::input_parameter< const arma::mat >::type smallY(smallYSEXP);
-    rcpp_result_gen = Rcpp::wrap(store_W_c(y, smallY));
-    return rcpp_result_gen;
-END_RCPP
-}
-// store_V_c
-arma::mat store_V_c(const arma::vec y, const arma::mat smallY);
-RcppExport SEXP _DynamicCorrelation_store_V_c(SEXP ySEXP, SEXP smallYSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::vec >::type y(ySEXP);
-    Rcpp::traits::input_parameter< const arma::mat >::type smallY(smallYSEXP);
-    rcpp_result_gen = Rcpp::wrap(store_V_c(y, smallY));
-    return rcpp_result_gen;
-END_RCPP
-}
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_DynamicCorrelation_const_c", (DL_FUNC) &_DynamicCorrelation_const_c, 2},
-    {"_DynamicCorrelation_mvrnormArma", (DL_FUNC) &_DynamicCorrelation_mvrnormArma, 3},
-    {"_DynamicCorrelation_get_A1_c", (DL_FUNC) &_DynamicCorrelation_get_A1_c, 5},
-    {"_DynamicCorrelation_get_A2_c", (DL_FUNC) &_DynamicCorrelation_get_A2_c, 5},
-    {"_DynamicCorrelation_get_A3_c", (DL_FUNC) &_DynamicCorrelation_get_A3_c, 5},
-    {"_DynamicCorrelation_get_TT_RR_c", (DL_FUNC) &_DynamicCorrelation_get_TT_RR_c, 1},
-    {"_DynamicCorrelation_cubic_coeff", (DL_FUNC) &_DynamicCorrelation_cubic_coeff, 1},
-    {"_DynamicCorrelation_shuffle_x_c", (DL_FUNC) &_DynamicCorrelation_shuffle_x_c, 2},
-    {"_DynamicCorrelation_store_W_c", (DL_FUNC) &_DynamicCorrelation_store_W_c, 2},
-    {"_DynamicCorrelation_store_V_c", (DL_FUNC) &_DynamicCorrelation_store_V_c, 2},
+    {"_covarianceBP_const_c", (DL_FUNC) &_covarianceBP_const_c, 2},
+    {"_covarianceBP_mvrnormArma", (DL_FUNC) &_covarianceBP_mvrnormArma, 3},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_DynamicCorrelation(DllInfo *dll) {
+RcppExport void R_init_covarianceBP(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }
