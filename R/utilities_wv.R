@@ -1,4 +1,3 @@
-
 get_grad = function(sigw2, sigv2, uw, uv, 
                     x) {
   return(sum(x * (1/sigw2 - (uw^2)/(sigw2^2) - 
@@ -45,7 +44,7 @@ get_q = function(y1, y2, x, coef = NA, correction = FALSE) {
     q = post_score(grad^2/length(x) * 
                      fisherinf, coef)
   } else {
-    q = grad^2/length(x) * fisherinf
+    q = grad^2/sum(x^2) * fisherinf
   }
   
   return(q)
