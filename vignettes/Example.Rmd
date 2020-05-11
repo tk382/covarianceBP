@@ -1,0 +1,75 @@
+---
+title: "Example analysis"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Example analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r}
+options(markdown.HTML.stylesheet = "path/to/a/custom/style.css")
+source("../R/utilities.R")
+# library(DynamicCorrelation)
+library(MASS)
+```
+
+# Create data under H0 and HA
+
+```{r}
+set.seed(2019)
+n = 30
+k = 3
+nullX = as.matrix(rnorm(30), ncol=1)
+nullY = MASS::mvrnorm(n, rep(0,3), diag(3))
+```
+
+
+```{r}
+set.seed(2019)
+n = 30
+k = 3
+Y = matrix(NA, n, k)
+X = rnorm(30)
+rho = X * 0.2
+rho = rho - min(rho)
+X = matrix(X, ncol=1)
+for (i in 1:n){
+  Sigma = matrix(rho[i], k, k)
+  diag(Sigma) = 1
+  Y[i,] = MASS::mvrnorm(1, rep(0,k), Sigma)
+}
+```
+
+# Score test under H0
+
+```{r}
+q = get_score(nullX, nullY[,1], nullY[,2])
+p = 1-pchisq(q, 1)
+print(paste("The score statistic is", q, "and the p-value is", p))
+```
+
+# Score test under HA
+
+```{r}
+q = get_score(X, Y[,1], Y[,2])
+p = 1-pchisq(q, 1)
+print(paste("The score statistic is", q, "and the p-value is", p))
+```
+
+# Degree test under H0
+```{r}
+d = get_degree(as.matrix(nullX, ncol=1), nullY[,1], nullY[,2:3])
+p = get_p_from_degree(nullY[,1], nullY[,2:3], d)
+print(paste("The degree statistic is", d, "and the p-value is", p))
+```
+
+
+# Degree test under HA
+
+```{r}
+d = get_degree(as.matrix(X, ncol=1), Y[,1], Y[,2:3])
+p = get_p_from_degree(Y[,1], Y[,2:3], d)
+print(paste("The degree statistic is", d, "and the p-value is", p))
+```
+
