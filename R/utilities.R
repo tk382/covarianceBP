@@ -1,69 +1,47 @@
-#' Computes the score of the log likelihood
-#'
-#' @param x covariate matrix to test
-#' @param y1 vector of first variable
-#' @param y2 vector of second variable
-#' @return score vector of the bivariate normal likelihood
-#' @export
 get_newgrad = function(x, y1, y2){
+  a = mean(y1^2)
+  b = mean(y2^2)
   d = mean(y1*y2)
   xmat = cbind(rep(1, length(x)), x)
-  return(colSums((y1*y2-d)*xmat))
+  first = (a*b*d - d^3) * colSums(xmat)
+  second = b * d * colSums(xmat * (y1^2))
+  third = a * d * colSums(xmat * (y2^2))
+  fourth = (a*b+d^2)*colSums(xmat * y1 * y2)
+  out = (first - second - third + fourth)
+  return(out)
 }
-#' Computes the inverse Fisher information of the log likelihood
-#'
-#' @param x covariate matrix to test
-#' @param y1 vector of first variable
-#' @param y2 vector of second variable
-#' @return Matrix of inverse fisher information of the bivariate normal likelihood
-#' @export
+
 get_newfisher = function(x, y1, y2){
-  a = mean(y1*y1)
-  b = mean(y2*y2)
+  a = mean(y1^2)
+  b = mean(y2^2)
   d = mean(y1*y2)
-  xmat = cbind(rep(1, length(x)),x)
-  tmpmat = solve(t(xmat) %*% xmat)
-  return(tmpmat)
+  xmat = cbind(rep(1, length(x)), x)
+  first = (a*b+d^2)*(a*b-d^2)*(t(xmat) %*% xmat)
+  second = 4*a*b*d*d*
+    (colSums(xmat) %*% t(colSums(xmat)))/nrow(x)
+  return(solve(first-second))
 }
 
-#' Computes the score statistic
-#'
-#' @param x covariate matrix to test
-#' @param y1 vector of first variable
-#' @param y2 vector of second variable
-#' @return double score statistic
-#' @export
-#' @examples
-#' x = rnorm(100)
-#' y1 = rnorm(100)
-#' y2 = rnorm(100)
-#' q = get_score(x, y1, y2)
+
 get_score = function(x, y1, y2){
-  a = mean(y1*y1)
-  b = mean(y2*y2)
+  a = mean(y1^2)
+  b = mean(y2^2)
   d = mean(y1*y2)
-  const = 1/(a*b+d^2)
-  return(const*
-         (t(get_newgrad(x, y1, y2))  %*%
-             get_newfisher(x,y1,y2) %*%
-             get_newgrad(x,y1,y2)))
+  const = 1/(a*b-d^2)
+  return(const* 
+           t(get_newgrad(x, y1, y2))  %*%
+           get_newfisher(x,y1,y2) %*%
+           get_newgrad(x,y1,y2))
 }
 
-#' Computes the score statistic
-#'
-#' @param x covariate matrix to test
-#' @param y vector of main variable
-#' @param Y matrix of the rest of the variables. The row number of Y should match the length of y.
-#' @return double: degree statistic
-#' @export
-#' @examples
-#' n = 30
-#' k = 3
-#' nullX = as.matrix(rnorm(30), ncol=1)
-#' nullY = MASS::mvrnorm(n, rep(0,3), diag(3))
-#' d = get_degree(as.matrix(nullX, ncol=1), nullY[,1], nullY[,2:3])
-#' p = get_p_from_degree(nullY[,1], nullY[,2:3], d)
-#' print(paste("The degree statistic is", d, "and the p-value is", p))
+
+get_score_reverse = function(x, y1, y2){
+  xmat = cbind(rep(1, length(x)),x)
+  grad = colSums(xmat * (y1*y2/(mean(y1*y2)) - 1))
+  tmpmat = solve(t(xmat) %*% xmat)
+  return(grad %*% t(tmpmat) %*% grad)
+}
+
 get_degree = function(x, y, Y){
   d = 0
   for (k in 1:ncol(Y)){
@@ -73,10 +51,20 @@ get_degree = function(x, y, Y){
 }
 
 get_eta = function(rho12, rho23, rho13, rho11, rho22, rho33){
-  num = (rho11*rho23 + rho12*rho13)
-  denom = sqrt(rho11*rho22-rho12^2)*sqrt(rho11*rho33-rho13^2)
+  a = rho11
+  b = rho22
+  c = rho33
+  d = rho12
+  e = rho13
+  f = rho23
+  num = 2*a^2*b*c*d*e + 3*a*c*d^3*e + 3*a*b*d*e^3-2*a^2*b^2*c*e
+  num = num - a^2*b*e^2*f - a*b^2*e^3 + a^3*b*c*f
+  num = num - 2*a*b*c*d^2*e - b*d^2*e^3 - a^2*c*d^2*f+2*d^3*e^3
+  num = num - a^2*b*c*d^2 - a*b*d^2*e^2 + 2*a^2*d*e*f^2
+  denom = (a*b+d^2)*(a*b-d^2)^2
   return(num/denom)
 }
+
 #' Estimate H
 #'
 #' @param Sigma True or estimated variance of all the variables of interest.
@@ -96,16 +84,6 @@ get_H = function(Sigma){
   diag(est_H) = 1
   return(est_H)
 }
-
-#
-# get_degree = function(x, y1, Y){
-#   scores = rep(NA, ncol(Y))
-#   for (i in 1:ncol(Y)){
-#     scores[i] = get_newscores(x, y1, Y[,i])
-#   }
-#   d = sum(scores)
-#   return(d)
-# }
 
 
 #' Estimate p-value from the degree statistic
