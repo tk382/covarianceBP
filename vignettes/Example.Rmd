@@ -10,7 +10,7 @@ vignette: >
 ```{r}
 options(markdown.HTML.stylesheet = "path/to/a/custom/style.css")
 source("../R/utilities.R")
-# library(DynamicCorrelation)
+Rcpp::sourceCpp("../src/utilities.cpp")
 library(MASS)
 ```
 
@@ -44,32 +44,36 @@ for (i in 1:n){
 # Score test under H0
 
 ```{r}
-q = get_score(nullX, nullY[,1], nullY[,2])
+q = get_score_c(nullX, nullY[,1], nullY[,2])
 p = 1-pchisq(q, 1)
-print(paste("The score statistic is", q, "and the p-value is", p))
+print(paste("The score statistic is", round(q,2), 
+            "and the p-value is", round(p,2)))
 ```
 
 # Score test under HA
 
 ```{r}
-q = get_score(X, Y[,1], Y[,2])
+q = get_score_c(X, Y[,1], Y[,2])
 p = 1-pchisq(q, 1)
-print(paste("The score statistic is", q, "and the p-value is", p))
+print(paste("The score statistic is", round(q,2), 
+            "and the p-value is", round(p,2)))
 ```
 
 # Degree test under H0
 ```{r}
-d = get_degree(as.matrix(nullX, ncol=1), nullY[,1], nullY[,2:3])
-p = get_p_from_degree(nullY[,1], nullY[,2:3], d)
-print(paste("The degree statistic is", d, "and the p-value is", p))
+d = get_degree_c(as.matrix(nullX, ncol=1), nullY[,1], nullY[,2:3])
+p = get_p_from_degree_c(nullY[,1], nullY[,2:3], d)
+print(paste("The degree statistic is", round(d,2), 
+            "and the p-value is", round(p,2)))
 ```
 
 
 # Degree test under HA
 
 ```{r}
-d = get_degree(as.matrix(X, ncol=1), Y[,1], Y[,2:3])
-p = get_p_from_degree(Y[,1], Y[,2:3], d)
-print(paste("The degree statistic is", d, "and the p-value is", p))
+d = get_degree_c(as.matrix(X, ncol=1), Y[,1], Y[,2:3])
+p = get_p_from_degree_c(Y[,1], Y[,2:3], d)
+print(paste("The degree statistic is", round(d,2), 
+            "and the p-value is", round(p,2)))
 ```
 
