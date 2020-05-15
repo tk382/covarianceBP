@@ -63,7 +63,7 @@ get_eta = function(rho12, rho23, rho13, rho11, rho22, rho33){
   num = num - a^2*b*e^2*f - a*b^2*e^3 + a^3*b*c*f
   num = num - 2*a*b*c*d^2*e - b*d^2*e^3 - a^2*c*d^2*f+2*d^3*e^3
   num = num - a^2*b*c*d^2 - a*b*d^2*e^2 + 2*a^2*d*e*f^2
-  denom = (a*b+d^2)*(a*b-d^2)^2
+  denom = sqrt((a*b+d^2)*(a*b-d^2)^2*(a*b+e^2)*(a*b-e^2)^2)
   return(num/denom)
 }
 
