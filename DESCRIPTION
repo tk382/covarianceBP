@@ -8,10 +8,10 @@ Description: A hypothesis testing tool that studies whether correlation changes 
 License: GPL (>=2)
 Encoding: UTF-8
 LazyData: true
-LinkingTo: Rcpp, RcppArmadillo
 Depends: R (>= 3.5.0)
 Suggests: knitr, rmarkdown
 VignetteBuilder: knitr
+LinkingTo: Rcpp, RcppArmadillo
 Imports:
     Rcpp,
     RcppArmadillo,

@@ -1,168 +1,199 @@
 #include <RcppArmadillo.h>
-#include <RcppArmadilloExtensions/sample.h>
+#include <Rmath.h>
 using namespace Rcpp;
 using namespace std;
+// -*- mode: C++; c-indent-level: 4; c-basic-offset: 4; 
+//           compile-command: "gcc -s -Wall -O3 -I/usr/share/R/include 
+//                             -o rmath_qbeta rmath_qbeta.c -lRmath -lm" -*-
 
-//const double log2pi = std::log(2.0 * M_PI);
 
-arma::vec get_grad_c(const double sigw,
-                      const double sigv,
-                      const arma::vec uw,
-                      const arma::vec uv,
-                      const arma::mat x){
-
-  arma::vec tmp1 = uw%uw / (sigw * sigw);
-  arma::vec tmp2 = uv%uv / (sigv * sigv);
-  arma::vec tmp3 = arma::zeros<arma::vec>(uw.size());
-  tmp3.fill(1/sigw);
-  arma::vec tmp4 = arma::zeros<arma::vec>(uw.size());
-  tmp4.fill(1/sigv);
-  arma::vec tmp = tmp3 - tmp1 - tmp4 + tmp2;
+// [[Rcpp::plugins("cpp11")]]
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+arma::vec get_grad_c(const arma::mat x,
+                     const arma::vec y1,
+                     const arma::vec y2){
+  double a = mean(y1%y1);
+  double b = mean(y2%y2);
+  double d = mean(y1%y2);
+  arma::mat intercept = arma::ones<arma::mat>(x.n_rows, 1);
+  arma::mat x2 = join_rows(intercept, x);
   int P = x.n_cols;
-  arma::vec grad = arma::zeros<arma::vec>(P);
-  for (int p = 0; p < P; ++p){
-    grad(p) = sum(x.col(p) % tmp);
+  arma::vec first(P+1);
+  arma::vec second(P+1);
+  arma::vec third(P+1);
+  arma::vec fourth(P+1);
+  for (int p = 0; p < P+1; ++p){
+    first(p) = sum(x2.col(p)) * (a*b*d - d*d*d);
+    second(p) = sum(x2.col(p) % y1 % y1) * b * d;
+    third(p) = sum(x2.col(p) % y2 % y2) * a * d;
+    fourth(p) = sum(x2.col(p) % y1 % y2) * (a*b+d*d);
   }
-  return grad;
+  arma::vec out = first - second - third + fourth;
+  return out;
 }
 
 
 // [[Rcpp::export]]
-double const_c(const double sigw,
-        const double sigv){
-  double tmp = 2 * (1/(sigw*sigw) + 1/(sigv*sigv));
-  return 1/tmp;
+arma::mat get_fisher_c(const arma::mat x,
+                       const arma::vec y1,
+                       const arma::vec y2){
+  double a = mean(y1%y1);
+  double b = mean(y2%y2);
+  double d = mean(y1%y2);
+  int N = y1.size();
+  arma::mat intercept = arma::ones<arma::mat>(x.n_rows, 1);
+  arma::mat x2 = join_rows(intercept, x);
+  arma::mat first = (a*b+d*d)*(a*b-d*d)*(x2.t() * x2);
+  arma::rowvec colsumx = sum(x2, 0);
+  arma::mat second = 4 * a * b * d * d * colsumx.t() * colsumx/N;
+  return (first-second).i();
 }
 
-// //' get_score
-// //' The order of y1 and y2 does not matter.
-// //'
-// //' @param y1 observation of the first variable
-// //' @param y2 observation of the second variable
-// //' @param x covariate vector
-// //'
-// //' @export
-// //' @example
-// //' x = rnorm(100)
-// //' y1 = rnorm(100)
-// //' y2 = rnorm(100)
-// //' q = get_score(x, y1, y2)
-// // [[Rcpp::export]]
-// double get_score(const arma::mat x,
-//             const arma::vec y1,
-//             const arma::vec y2){
-//   arma::mat B = orth(x) * sqrt(x.n_rows);
-//   arma::vec w = y1 + y2;
-//   arma::vec v = y1 - y2;
-//   int n = w.size();
-//   double sigw = sum(w%w)/n;
-//   double sigv = sum(v%v)/n;
-//   arma::vec grad = get_grad_c(sigw, sigv, w, v, B);
-//   double fisherinf = const_c(sigw, sigv);
-//   double q = sum(grad%grad) / n * fisherinf;
-//   return q;
-// }
-
-// //' get_score_wv_c
-// //'
-// //' This function takes the sum of two variables, w, the difference of them, v, and one dimensional covariate x
-// //' and returns the score test statistic
-// //'
-// //' @param x Covariate vector
-// //' @param w sum of variable1 and variable2
-// //' @param v difference of variable1 and variable2
-// //' @export
-// // [[Rcpp::export]]
-// double get_score_wv_c(const arma::mat x,
-//                      const arma::vec w,
-//                      const arma::vec v) {
-//   int n = w.size();
-//   double sigw = sum(w%w)/n;
-//   double sigv = sum(v%v)/n;
-//   arma::vec grad = get_grad_c(sigw, sigv, w, v, x);
-//   double fisherinf = const_c(sigw, sigv);
-//   double q = sum(grad%grad) / n * fisherinf;
-//   return q;
-// }
-
-//' mvrnormArma
-//'
-//' This function returns n samples of multivariate normal distribution with
-//' mean mu and variance Sigma.
-//'
-//' @param n Sample size
-//' @param mu Mean vector
-//' @param Sigma Variance-covariance matrix
-//' @export
 // [[Rcpp::export]]
-arma::mat mvrnormArma(const int n,
-                      const arma::vec mu,
-                      const arma::mat Sigma) {
-  //returns random multivariate normal vectors with mean mu and covariance Sigma
-  //input : integer n for the number of vectors you'd like to draw
-  //      : vector mu for the mean
-  //      : matrix Sigma for the covariance - needs to be psd
-  int ncols = Sigma.n_cols;
-  arma::mat Y = arma::randn(n, ncols);
-  return arma::repmat(mu, 1, n).t() + Y * arma::chol(Sigma);
+double get_score_c(const arma::mat x,
+                      const arma::vec y1,
+                      const arma::vec y2){
+  double a = mean(y1%y1);
+  double b = mean(y2%y2);
+  double d = mean(y1%y2);
+  double mult = 1/(a*b-d*d);
+  arma::vec grad = get_grad_c(x, y1, y2);
+  arma::mat fisher = get_fisher_c(x, y1, y2);
+  arma::mat val = mult * grad.t() * fisher * grad;
+  return val(0,0);
 }
 
+// [[Rcpp::export]]
+double get_degree_c(const arma::mat x,
+                  const arma::vec y,
+                  const arma::mat Y){
+  int K = Y.n_cols;
+  double d = 0;
+  for (int k = 0; k < K; ++k){
+    d = d + get_score_c(x, y, Y.col(k));
+  }
+  return d;
+}
 
-// //' get_degree_c
-// //'
-// //' This function returns a sum statistic d for vector y tested with all other variables in matrix Y against covariate x
-// //'
-// //' @param x Covariate vector
-// //' @param y Variable of interest
-// //' @param Y All other variables to test with y
-// //' @export
-// // [[Rcpp::export]]
-// double get_degree(const arma::mat x,
-//                     const arma::vec y,
-//                     const arma::mat Y){
-//   //degree statistic for i'th gene based on matrix Y
-//   arma::mat B = orth(x) * sqrt(x.n_rows);
-//   int K = Y.n_cols;
-//   double d = 0;
-//   for (int i=0; i < K; ++i){
-//     d = d + get_score(B, y, Y.col(i));
-//   }
-//   return d;
-// }
+// [[Rcpp::export]]
+double get_eta_c(const double rho12,
+                    const double rho23,
+                    const double rho13,
+                    const double rho11,
+                    const double rho22,
+                    const double rho33){
+  double a = rho11;
+  double b = rho22;
+  double c = rho33;
+  double d = rho12;
+  double e = rho13;
+  double f = rho23;
+  double num = 2*a*a*b*c*d*e + 3*a*c*d*d*d*e + 3*a*b*d*e*e*e;
+  num = num - 2*a*a*b*b*c*e - a*a*b*e*e*f - a*b*b*e*e*e;
+  num = num + a*a*a*b*c*f - 2*a*b*c*d*d*e - b*d*d*e*e*e;
+  num = num - a*a*c*d*d*f + 2*d*d*d*e*e*e - a*a*b*c*d*d;
+  num = num - a*b*d*d*e*e + 2*a*a*d*e*f*f;
+  double denom = sqrt((a*b+d*d)*(a*b-d*d)*(a*b-d*d));
+  denom = denom * sqrt((a*b+e*e)*(a*b-e*e)*(a*b-e*e));
+  return num/denom;
+}
 
+// [[Rcpp::export]]
+arma::mat get_H_c(const arma::mat Sigma){
+  int K = Sigma.n_rows;
+  arma::mat est_H = arma::zeros<arma::mat>(K-1, K-1);
+  double eta;
+  for (int i=1; i < K-1; ++i){
+    for (int j=(i+1); j < K; ++j){
+      eta = get_eta_c(Sigma(0,i), Sigma(i,j), Sigma(j,0),
+                      Sigma(0,0), Sigma(i,i), Sigma(j,j));
+      est_H(i-1, j-1) = eta;
+      est_H(j-1, i-1) = eta;
+    }
+  }
+  est_H.diag().ones();
+  return est_H;
+}
 
-//
-// //' @export
-// // [[Rcpp::export]]
-// double get_eta(const double rho12,
-//                  const double rho23,
-//                  const double rho13){
-//   double num = (rho23 + 2 * rho12 * rho23)* (rho12*rho12+1) * (rho13*rho13 + 1);
-//   num = num + rho12 * rho13* (6 + 2 * rho12 + 2 * rho13 + 2 * rho23);
-//   num = num - rho12 * (rho13*rho13 + 1) * (3*rho13 + rho13 + 2 * rho12*rho23);
-//   num = num - rho13 * (rho12*rho12 + 1) * (3*rho12 + rho12 + 2 * rho13 * rho23);
-//   double denom = (1-rho12*rho12)*(1-rho13*rho13) * sqrt(1+rho12*rho12) * sqrt(1+rho13*rho13);
-//   return num/denom;
-// }
+// [[Rcpp::export]]
+arma::mat shuffle_row(arma::mat A) {
+  for (int i=0; i < A.n_rows; ++i) {
+    A.row(i) = shuffle( A.row(i), 1 );
+  }
+  return A;
+}
 
+// [[Rcpp::export]]
+arma::cube shuffle_x_c(arma::mat x, 
+                      int B){
+  arma::cube X(x.n_rows, x.n_cols, B);
+  for (int b=0; b < B; ++b){
+    X.slice(b) = shuffle_row(x);
+  }
+  return X;
+}
 
-// //' @export
-// // [[Rcpp::export]]
-// arma::mat get_H(const arma::mat Sigma){
-//   int K = Sigma.n_rows;
-//   arma::mat est_H = arma::zeros<arma::mat>(K-1, K-1);
-//   double eta;
-//   for (int i=1; i < K-1; ++i){
-//     for (int j=(i+1); j < K; ++j){
-//       eta = get_eta(Sigma(0,i), Sigma(i,j), Sigma(j,0));
-//       est_H(i-1, j-1) = eta;
-//       est_H(j-1, i-1) = eta;
-//     }
-//   }
-//   est_H.diag().ones();
-//   return est_H;
-// }
-//
+// [[Rcpp::export]]
+arma::mat bootstrap_c(const arma::mat x,
+                      const int B,
+                      const arma::mat Y){
+  arma::cube Xb = shuffle_x_c(x, B);
+  const int K = Y.n_cols;
+  arma::mat out(B, K);
+  for (int b = 0; b < B; ++b){
+    for (int k = 1; k < K; ++k){
+      out(b, k) = get_score_c(Xb.slice(b), Y.col(0), Y.col(k));
+    }
+  }
+  return out;
+}
+
+// [[Rcpp::export]]
+double get_p_from_degree_c(const arma::vec y,
+                           const arma::mat Y,
+                           const double d,
+                           const int numsim = 1000){
+  arma::mat y2(y);
+  y2.reshape(Y.n_rows, 1);
+  arma::mat bigY = join_rows(y2, Y);
+  int K = bigY.n_cols;
+  arma::mat est_Sigma = cor(bigY);
+  arma::mat est_H = get_H_c(est_Sigma);
+  arma::vec lambda;
+  arma::mat eigvec;
+  eig_sym(lambda, eigvec, est_Sigma);
+  arma::mat null_d(numsim, K-1);
+  for (int k = 0; k < K-1; ++k){
+    arma::vec tmp(numsim);
+    for (int i = 0; i < numsim; ++i){
+      double param1 = 0.5;
+      double param2 = 2*lambda(k);
+      tmp(i) = R::rgamma(param1, param2);
+    }
+    null_d.col(k) = tmp;
+  }
+  arma::vec rowsums = sum(null_d, 1);
+  double p = 0;
+  for (int i = 0; i < numsim; ++i){
+    if (rowsums(i) > d){
+      p += 1;
+    }
+  }
+  p = p/numsim;
+  return p;
+}
+  
+  
+// [[Rcpp::export]]
+double generate_rgamma(int numsim){
+  double out;
+  for (int i = 0; i < numsim; ++i){
+    out = R::rgamma(0.5, 3);
+    cout << out << " ";
+  }
+  return out;
+}
 
 
 double get_A1_c(int k,
@@ -273,74 +304,4 @@ arma::vec cubic_coeff(arma::mat x){
   coef(2) = A3/(12*n*(p-1)*(p+1)*(p+3));
   return coef;
 }
-
-
-
-
-arma::mat shuffle_x_c(arma::vec x, int B){
-  arma::mat X(x.size(), B);
-  for (int b=0; b < B; ++b){
-    X.col(b) = shuffle(x);
-  }
-  return X;
-}
-
-
-arma::mat store_W_c(const arma::vec y,
-                    const arma::mat smallY){
-  int n = smallY.n_rows;
-  int K = smallY.n_cols;
-  arma::mat W(n, K);
-  for (int k = 0; k < K; ++k){
-    W.col(k) = y + smallY.col(k);
-  }
-  return W;
-}
-
-arma::mat store_V_c(const arma::vec y,
-                    const arma::mat smallY){
-  int n = smallY.n_rows;
-  int K = smallY.n_cols;
-  arma::mat V(n, K);
-  for (int k = 0; k < K; ++k){
-    V.col(k) = y - smallY.col(k);
-  }
-  return V;
-}
-
-
-// //' bootstrap_c
-// //'
-// //' This function performs permutation test for given covariate x B times
-// //' Also takes as input W instead of Y matrix
-// //'
-// //' @param x Covariate vector
-// //' @param B number of permutations
-// //' @param W sum of the main variable and each target
-// //' @param V difference of the main variable and each target
-// //' @export
-// // [[Rcpp::export]]
-// arma::mat bootstrap_c(const arma::vec x,
-//                       const int B,
-//                       const arma::mat W,
-//                       const arma::mat V){
-//   arma::mat Xb = shuffle_x_c(x, B);
-//   const int K = W.n_cols+1;
-//   arma::mat out(B, K-1);
-//   for (int b = 0; b < B; ++b){
-//     for (int k = 0; k < (K-1); ++k){
-//       out(b, k) = get_score_wv_c(Xb.col(b), W.col(k), V.col(k));
-//     }
-//   }
-//   return out;
-// }
-//
-//
-//
-//
-
-
-
-
-
 

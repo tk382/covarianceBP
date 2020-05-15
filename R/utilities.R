@@ -2,7 +2,7 @@ get_grad = function(x, y1, y2){
   a = mean(y1^2)
   b = mean(y2^2)
   d = mean(y1*y2)
-  xmat = cbind(rep(1, length(x)), x)
+  xmat = cbind(rep(1, length(y1)), x)
   first = (a*b*d - d^3) * colSums(xmat)
   second = b * d * colSums(xmat * (y1^2))
   third = a * d * colSums(xmat * (y2^2))
@@ -15,7 +15,7 @@ get_fisher = function(x, y1, y2){
   a = mean(y1^2)
   b = mean(y2^2)
   d = mean(y1*y2)
-  xmat = cbind(rep(1, length(x)), x)
+  xmat = cbind(rep(1, length(y1)), x)
   first = (a*b+d^2)*(a*b-d^2)*(t(xmat) %*% xmat)
   second = 4*a*b*d*d*
     (colSums(xmat) %*% t(colSums(xmat)))/nrow(x)
@@ -33,13 +33,6 @@ get_score = function(x, y1, y2){
            get_fisher(x,y1,y2) %*%
            get_grad(x,y1,y2))
 }
-
-# get_score_reverse = function(x, y1, y2){
-#   xmat = cbind(rep(1, length(x)),x)
-#   grad = colSums(xmat * (y1*y2/(mean(y1*y2)) - 1))
-#   tmpmat = solve(t(xmat) %*% xmat)
-#   return(grad %*% t(tmpmat) %*% grad)
-# }
 
 get_degree = function(x, y, Y){
   d = 0
