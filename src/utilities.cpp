@@ -47,13 +47,20 @@ arma::mat get_fisher_c(const arma::mat x,
   arma::mat first = (a*b+d*d)*(a*b-d*d)*(x2.t() * x2);
   arma::rowvec colsumx = sum(x2, 0);
   arma::mat second = 4 * a * b * d * d * colsumx.t() * colsumx/N;
-  return (first-second).i();
+  arma::mat ans = (first-second).i();
+  // try{
+  //   ans = (first-second).i();
+  // }
+  // catch(std::exception){
+  //   Rcout << x << "\n";
+  // }
+  return ans;
 }
 
 // [[Rcpp::export]]
 double get_score_c(const arma::mat x,
-                      const arma::vec y1,
-                      const arma::vec y2){
+                   const arma::vec y1,
+                   const arma::vec y2){
   double a = mean(y1%y1);
   double b = mean(y2%y2);
   double d = mean(y1%y2);
@@ -65,9 +72,21 @@ double get_score_c(const arma::mat x,
 }
 
 // [[Rcpp::export]]
+arma::vec get_score_Y_c(const arma::mat x,
+                        const arma::vec y1,
+                        const arma::mat Y){
+  int K = Y.n_cols;
+  arma::vec out = arma::zeros<arma::vec>(K);
+  for (int k = 0; k < K; ++k){
+    out(k) = get_score_c(x, y1, Y.col(k));
+  }
+  return out;
+}
+
+// [[Rcpp::export]]
 double get_degree_c(const arma::mat x,
-                  const arma::vec y,
-                  const arma::mat Y){
+                    const arma::vec y,
+                    const arma::mat Y){
   int K = Y.n_cols;
   double d = 0;
   for (int k = 0; k < K; ++k){
@@ -78,11 +97,11 @@ double get_degree_c(const arma::mat x,
 
 // [[Rcpp::export]]
 double get_eta_c(const double rho12,
-                    const double rho23,
-                    const double rho13,
-                    const double rho11,
-                    const double rho22,
-                    const double rho33){
+                 const double rho23,
+                 const double rho13,
+                 const double rho11,
+                 const double rho22,
+                 const double rho33){
   double a = rho11;
   double b = rho22;
   double c = rho33;
@@ -94,8 +113,8 @@ double get_eta_c(const double rho12,
   num = num + a*a*a*b*c*f - 2*a*b*c*d*d*e - b*d*d*e*e*e;
   num = num - a*a*c*d*d*f + 2*d*d*d*e*e*e - a*a*b*c*d*d;
   num = num - a*b*d*d*e*e + 2*a*a*d*e*f*f;
-  double denom = sqrt((a*b+d*d)*(a*b-d*d)*(a*b-d*d));
-  denom = denom * sqrt((a*b+e*e)*(a*b-e*e)*(a*b-e*e));
+  double denom = std::sqrt((a*b+d*d)*(a*b-d*d)*(a*b-d*d));
+  denom = denom * std::sqrt((a*b+e*e)*(a*b-e*e)*(a*b-e*e));
   return num/denom;
 }
 
@@ -118,15 +137,14 @@ arma::mat get_H_c(const arma::mat Sigma){
 
 // [[Rcpp::export]]
 arma::mat shuffle_row(arma::mat A) {
-  for (int i=0; i < A.n_rows; ++i) {
-    A.row(i) = shuffle( A.row(i), 1 );
-  }
+  arma::uvec ind = arma::randperm(A.n_rows);
+  A = A.rows(ind);
   return A;
 }
 
 // [[Rcpp::export]]
 arma::cube shuffle_x_c(arma::mat x, 
-                      int B){
+                       int B){
   arma::cube X(x.n_rows, x.n_cols, B);
   for (int b=0; b < B; ++b){
     X.slice(b) = shuffle_row(x);
@@ -183,17 +201,47 @@ double get_p_from_degree_c(const arma::vec y,
   p = p/numsim;
   return p;
 }
-  
-  
-// [[Rcpp::export]]
-double generate_rgamma(int numsim){
-  double out;
-  for (int i = 0; i < numsim; ++i){
-    out = R::rgamma(0.5, 3);
-    cout << out << " ";
+
+
+// [[Rcpp::export]]  
+Rcpp::List sequential_bootstrap_c(const arma::vec x,
+                                  const arma::vec y,
+                                  const arma::mat Y,
+                                  const int initialB,
+                                  const int maxB,
+                                  const double d,
+                                  bool verbose = true){
+  arma::cube Xb = shuffle_x_c(x, initialB);
+  int finalB = 0;
+  int more_extreme = 0;
+  arma::vec outd = arma::zeros<arma::vec>(maxB);
+  try{
+    while (((more_extreme < 2) | (finalB < initialB)) & (finalB < maxB)){
+      arma::cube Xb = shuffle_x_c(x, initialB);
+      arma::vec d_try = arma::zeros<arma::vec>(initialB);
+      for (int i = 0; i < initialB; ++i){
+        d_try(i) = get_degree_c(Xb.slice(i), y, Y);
+        if(d_try(i) > d){
+          more_extreme += 1;
+          if(verbose){
+            cout << "found more extreme case  " << more_extreme << "\n";
+          }
+        }
+      }
+      outd.subvec(finalB, (finalB+initialB-1)) = d_try;
+      finalB += initialB;
+      Rcpp::checkUserInterrupt();
+    }
   }
-  return out;
-}
+  catch (Rcpp::internal::InterruptedException& e){
+    Rcout << "Caught an interruption!" << std::endl;
+  }
+  outd = outd.subvec(0, finalB-1);
+  double p = (double)more_extreme/(double)finalB;
+  return Rcpp::List::create(Rcpp::Named("d") = outd,
+                            Rcpp::Named("p") = p);
+}  
+
 
 
 double get_A1_c(int k,
