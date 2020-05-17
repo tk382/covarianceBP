@@ -48,12 +48,6 @@ arma::mat get_fisher_c(const arma::mat x,
   arma::rowvec colsumx = sum(x2, 0);
   arma::mat second = 4 * a * b * d * d * colsumx.t() * colsumx/N;
   arma::mat ans = (first-second).i();
-  // try{
-  //   ans = (first-second).i();
-  // }
-  // catch(std::exception){
-  //   Rcout << x << "\n";
-  // }
   return ans;
 }
 
@@ -351,5 +345,14 @@ arma::vec cubic_coeff(arma::mat x){
   coef(1) = (A2-2*A3)/(12*n*(p-1)*(p+1));
   coef(2) = A3/(12*n*(p-1)*(p+1)*(p+3));
   return coef;
+}
+
+// [[Rcpp::export]]
+arma::mat mvrnormArma(const int n,
+                      const arma::vec mu,
+                      const arma::mat Sigma){
+  int ncols = Sigma.n_cols;
+  arma::mat Y = arma::randn(n, ncols);
+  return arma::repmat(mu, 1, n).t() + Y * arma::chol(Sigma);
 }
 
