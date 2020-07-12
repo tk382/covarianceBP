@@ -1,5 +1,5 @@
 library(diversitree)
-library(mclust)
+library(mvtnorm)
 library(ggplot2)
 library(reshape2)
 Rcpp::sourceCpp("src/utilities.cpp")
@@ -19,26 +19,29 @@ h6_quadratic = function(X, alpha) {
 
 
 #### Likelihood function ####
-likelihood_fisher = function(alpha, opt = list(X, Y)){
+likelihood_fisher = function(varianceparam, opt = list(X, Y)){
+  alpha = varianceparam[1:2]
+  sigma1 = varianceparam[3]
+  sigma2 = varianceparam[4]
   rho = h1_fisher(opt$X, alpha)
-  # sigma1 = mean(opt$Y[,1]^2)
-  # sigma2 = mean(opt$Y[,2]^2)
   l = 0
   for (i in 1:nrow(opt$X)){
-    l = l + dmvnorm(matrix(opt$Y[i,], nrow=1), 
+    l = l + dmvnorm(opt$Y[i,], 
                     rep(0,2), 
-                    matrix(c(1, rho[i], rho[i], 1), nrow=2),
+                    matrix(c(sigma1, rho[i], rho[i], sigma2), nrow=2),
                     log=TRUE)
   }
   return(-l)
 }
-likelihood_null = function(alpha, opt = list(X, Y)){
-  newrho = h1_fisher(X, c(alpha, 0))[1]
-  sigma1 = mean(Y[,1]^2)
-  sigma2 = mean(Y[,2]^2)
+
+likelihood_null = function(varianceparam, opt = list(X, Y)){
+  newrho = varianceparam[1]
+  sigma1 = varianceparam[2]
+  sigma2 = varianceparam[3]
+  varmat = matrix(c(sigma1, newrho, newrho, sigma2), nrow=2)
   l = sum(dmvnorm(Y, 
                   rep(0,2), 
-                  matrix(c(1, newrho, newrho, 1), nrow=2),
+                  varmat,
                   log=TRUE))
   return(-l)
 }
@@ -74,16 +77,17 @@ for (a in 1:length(alphalist)){
     ## LRT
     # print("LR..")
     t = Sys.time()
-    mle_fisher = optim(c(0, alpha[1]), 
+    mle_fisher = optim(c(alpha, 1, 1), 
                        likelihood_fisher,
                        opt = list(X = X, Y = Y),
-                       method = "L-BFGS-B",
-                       lower=-10, upper=10)
-    mle_null = optim(mean(Y[,1]*Y[,2]),
+                       method = "BFGS")
+    if(5 %in% mle_fisher$par){
+      break
+    }
+    mle_null = optim(c(mean(Y[,1]*Y[,2]), 1, 1),
                      likelihood_null,
                      opt = list(X = X, Y = Y),
-                     method = "Brent",
-                     lower = -5, upper= 5)
+                     method = "BFGS")
     llr_fisher = 2 * (-mle_fisher$value + mle_null$value)
     lrp[b, a] = pchisq(llr_fisher, 1, lower.tail=FALSE)
     lrt[b, a] = Sys.time() - t
@@ -109,40 +113,30 @@ for (a in 1:length(alphalist)){
 }
 
 ## analyze time
-lrt = as.data.frame(lrt)
-lat = as.data.frame(lat)
-scoret = as.data.frame(scoret)
+lrt = as.data.frame(lrt); lat = as.data.frame(lat); scoret = as.data.frame(scoret)
 colnames(lrt) = colnames(lat) = colnames(scoret) = paste0("alpha=",alphalist)
-lrt$test = "Likelihood Ratio"
-lat$test = "Liquid Association"
-scoret$test = "Score"
-fisher_time = rbind(lrp, lap, scorep)
-fisher_time2 = reshape2::melt(fisher_time, id = "test")
+lrt$test = "Likelihood Ratio"; lat$test = "Liquid Association"; scoret$test = "Score"
+fisher_time2 = reshape2::melt(rbind(lrp, lap, scorep), id='test')
 colnames(fisher_time2) = c("test", "alpha", "pvalue")
 fisher_time2$generate = "HyperbolicTangent"
 write.table(fisher_time2, "output/simulation_fishertime.txt",
             col.names=TRUE, row.names=FALSE, quote=TRUE)
 
 ##analyze p-value
-lrp = as.data.frame(lrp)
-lap = as.data.frame(lap)
-scorep = as.data.frame(scorep)
+lrp = as.data.frame(lrp); lap = as.data.frame(lap); scorep = as.data.frame(scorep)
 colnames(lrp) = colnames(lap) = colnames(scorep) = paste0("alpha=",alphalist)
-lrp$test = "Likelihood Ratio"
-lap$test = "Liquid Association"
-scorep$test = "Score"
-fisher_result = rbind(lrp, lap, scorep)
-fisher_result2 = reshape2::melt(fisher_result, id = "test")
-colnames(fisher_result2) = c("test", "alpha", "pvalue")
-fisher_result2$generate = "HyperbolicTangent"
+lrp$test = "LikelihoodRatio"; lap$test = "LiquidAssociation"; scorep$test = "Score"
+fisher_result = reshape2::melt(rbind(lrp, lap, scorep), id='test')
+colnames(fisher_result) = c("test", "alpha", "pvalue")
+fisher_result$generate = "HyperbolicTangent"
 write.table(fisher_result2, "output/simulation_fisherresult.txt",
             col.names=TRUE, row.names=FALSE, quote=TRUE)
-ggplot(fisher_result2, aes(x = alpha, y = pvalue, col = test, fill = test)) + 
+ggplot(fisher_result, aes(x = alpha, y = pvalue, col = test, fill = test)) + 
   geom_violin() + 
   geom_jitter(aes(col = test), size = 0.1, alpha = 0.1) 
   
 library(dplyr)
-fisher_result2 %>% group_by(test, alpha) %>%
+fisher_result %>% group_by(test, alpha) %>%
   summarize(power = sum(pvalue < 0.05)/B)
 
 

@@ -165,8 +165,3 @@ get_est_H = function(Sigma) {
   }
   return(est_H)
 }
-
-
-
-
-
